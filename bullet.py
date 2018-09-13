@@ -2,12 +2,12 @@ import pygame
 
 class Bullet1(pygame.sprite.Sprite):
     def __init__(self,position):
-        super(pygame.sprite.Sprite).__init__(self)
+        pygame.sprite.Sprite.__init__(self)
 
         self.image = pygame.image.load('images/bullet1.png').convert_alpha()
-        self.rect = pygame.image.get_rect()
+        self.rect = self.image.get_rect()
         self.rect.left,self.rect.top = position
-        self.speed = 12
+        self.speed = 14
         self.active = True
         self.mask = pygame.mask.from_surface(self.image)
 
