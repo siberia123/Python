@@ -63,6 +63,16 @@ def add_giant_enemies(group1,group2,number):
         group1.add(e3)
         group2.add(e3)
 
+def upgrade_level(group1,group2,group3,group,bullet_list,number):
+    if number >= 4:
+        add_small_enemies(group1,group,number)
+        add_mid_enemies(group2,group,number - 2)
+        add_giant_enemies(group3,group,number - 4)
+        for bullet in bullet_list:
+            bullet.speed += 6
+        for e in group:
+            e.speed += 1
+
 def main():
     pygame.mixer.music.play(-1) #play music circulatory
     clock = pygame.time.Clock() #creat an object of clock(to set fps)
@@ -76,8 +86,17 @@ def main():
     e3_destroy_index = 0
     plane_destroy_index = 0
 
+    level = 1
+
     score = 0
-    score_font = pygame.font.Font('font/font.ttf',36)
+    score_font = pygame.font.Font('font/font.ttf',26)
+    level_font = pygame.font.Font('font/font.ttf',26)
+
+    bomb_image = pygame.image.load('images/bomb.png').convert_alpha()
+    bomb_font = pygame.font.Font('font/font.ttf',38)
+    bomb_image_rect = bomb_image.get_rect()
+    bomb_NUM = 3
+
 
     paused = False
     pause_nor_image = pygame.image.load('images/pause_nor.png').convert_alpha()
@@ -104,7 +123,7 @@ def main():
     #add common bullets
     bullet1 = []
     bullet1_index = 0
-    BULLET1_NUM = 4
+    BULLET1_NUM = 10
     for i in range(BULLET1_NUM):
         bullet1.append(Bullet1(plane.rect.midtop)) #midtop is attribution of Rect
 
@@ -129,6 +148,27 @@ def main():
                         pause_image = resume_nor_image
                     else:
                         pause_image = pause_nor_image
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    if bomb_NUM:
+                        bomb_NUM -= 1
+                        get_bomb_sound.play()
+                        for each in enemies:
+                            each.active = False
+
+        #increase difficulty and rule of level
+        if score > 50 and level == 1:
+            level = 2;upgrade_level(small_enemies,mid_enemies,giant_enemies,enemies,bullet1,5)
+            upgrade_sound.play()
+        elif score > 120 and level == 2:
+            level = 3;upgrade_level(small_enemies,mid_enemies,giant_enemies,enemies,bullet1,5)
+            upgrade_sound.play()
+        elif score > 190 and level == 3:
+            level = 4;upgrade_level(small_enemies,mid_enemies,giant_enemies,enemies,bullet1,5)
+            upgrade_sound.play()
+        elif score > 250 and level == 4:
+            level = 5;upgrade_level(small_enemies,mid_enemies,giant_enemies,enemies,bullet1,5)
+            upgrade_sound.play()
 
         #draw background
         screen.blit(background,(0,0))  #draw one pic onto anther.(0,0): represent the relative location
@@ -179,7 +219,8 @@ def main():
                         else:
                             screen.blit(each.image2,each.rect)
                     #draw giant enemies's blood
-                    pygame.draw.line(screen,BLACK,(each.rect.left,each.rect.top - 5),(each.rect.right,each.rect.top - 5),2)
+                    pygame.draw.line(screen,BLACK,(each.rect.left,each.rect.top - 5),
+                                     (each.rect.right,each.rect.top - 5),2)
                     energy_remain = each.energy / GiantEnemy.ENERGY
                     if energy_remain > 0.3:
                         energy_color = GREEN
@@ -211,7 +252,8 @@ def main():
                     else:
                         screen.blit(each.image,each.rect)
                     #draw giant enemies's blood
-                    pygame.draw.line(screen,BLACK,(each.rect.left,each.rect.top - 5),(each.rect.right,each.rect.top - 5),2)
+                    pygame.draw.line(screen,BLACK,(each.rect.left,each.rect.top - 5),
+                                     (each.rect.right,each.rect.top - 5),2)
                     energy_remain = each.energy / MidEnemy.ENERGY
                     if energy_remain > 0.3:
                         energy_color = GREEN
@@ -264,8 +306,15 @@ def main():
                     screen.blit(plane.destroy_images[plane_destroy_index],plane.rect)
                     plane_destroy_index = (plane_destroy_index + 1) % 4
 
+        bomb_text = bomb_font.render('x %d'%bomb_NUM,True,WHITE)
+        bomb_text_rect = bomb_text.get_rect()
+        screen.blit(bomb_text,(20 + bomb_image_rect.width,height - 5 - bomb_text_rect.height))
+        screen.blit(bomb_image,(10,height - 10 - bomb_image_rect.height))
+
         score_text = score_font.render('Score : %s'%str(score),True,WHITE)
         screen.blit(score_text,(10,5))
+        level_text = level_font.render('Level : %s'%str(level),True,WHITE)
+        screen.blit(level_text,(20,30))
 
         screen.blit(pause_image,pause_rect)
 

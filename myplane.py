@@ -29,7 +29,7 @@ class MyPlane(pygame.sprite.Sprite):
         if self.rect.bottom < self.limit_height:
             self.rect.top += self.speed
         else:
-            self.rect.bottom = self.limit_height - 60
+            self.rect.bottom = self.limit_height
 
     def moveLeft(self):
         if self.rect.left > 0:
