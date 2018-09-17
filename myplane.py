@@ -18,6 +18,7 @@ class MyPlane(pygame.sprite.Sprite):
                                        self.limit_height - self.rect.height - 60
         self.speed = 10
         self.active = True
+        self.invincible = False
 
     def moveUp(self):
         if self.rect.top > 0:
@@ -42,3 +43,8 @@ class MyPlane(pygame.sprite.Sprite):
             self.rect.left += self.speed
         else:
             self.rect.right = self.limit_width
+    def reset(self):
+        self.rect.left,self.rect.top = (self.limit_width - self.rect.width) // 2, \
+                                       self.limit_height - self.rect.height - 60
+        self.active = True
+        self.invincible = True

@@ -1,9 +1,11 @@
+from random import randint,choice
 import pygame
 import sys
 import traceback
 from myplane import MyPlane
 from enemy import SmallEnemy,MidEnemy,GiantEnemy
-from bullet import Bullet1
+from bullet import Bullet1,Bullet2
+from supply import Bullet_Supply,Bomb_Supply
 
 
 
@@ -78,6 +80,7 @@ def main():
     clock = pygame.time.Clock() #creat an object of clock(to set fps)
 
     running = True
+    recorded = False
     switch_image = True #to exchange pics(creat a dynamic effects)
     delay = 100
     #the index of indicating dynamic pics
@@ -89,13 +92,24 @@ def main():
     level = 1
 
     score = 0
+    recorded_score = 0
     score_font = pygame.font.Font('font/font.ttf',26)
     level_font = pygame.font.Font('font/font.ttf',26)
+    game_over_font = pygame.font.Font('font/font.ttf',40)
+    game_over_image = pygame.image.load('images/gameover.png').convert_alpha()
+    again_image = pygame.image.load('images/again.png').convert_alpha()
+    again_image_rect = again_image.get_rect()
+    game_over_image_rect = game_over_image.get_rect()
+
 
     bomb_image = pygame.image.load('images/bomb.png').convert_alpha()
     bomb_font = pygame.font.Font('font/font.ttf',38)
     bomb_image_rect = bomb_image.get_rect()
     bomb_NUM = 3
+
+    life_image = pygame.image.load('images/life.png').convert_alpha()
+    life_rect = life_image.get_rect()
+    LIFE_NUM = 3
 
 
     paused = False
@@ -120,12 +134,31 @@ def main():
     giant_enemies = pygame.sprite.Group()
     add_giant_enemies(giant_enemies,enemies,2)
 
+    bullet_supply = Bullet_Supply(bg_size)
+    bomb_supply = Bomb_Supply(bg_size)
+    SUPPLY_TIME = pygame.USEREVENT
+    pygame.time.set_timer(SUPPLY_TIME,randint(25,40) * 1000)
+
+    DOUBLE_BULLET_TIME = pygame.USEREVENT + 1
+    is_double_bullet = False
+
+    INVINCIBLE_TIME = pygame.USEREVENT + 2
+
+
+
+
     #add common bullets
     bullet1 = []
     bullet1_index = 0
-    BULLET1_NUM = 10
+    BULLET1_NUM = 8
     for i in range(BULLET1_NUM):
         bullet1.append(Bullet1(plane.rect.midtop)) #midtop is attribution of Rect
+    bullet2 = []
+    bullet2_index = 0
+    BULLET2_NUM = 16
+    for i in range(BULLET2_NUM//2):
+        bullet2.append(Bullet2((plane.rect.centerx - 33,plane.rect.centery)))
+        bullet2.append(Bullet2((plane.rect.centerx + 33,plane.rect.centery)))
 
 
 #mian running programme
@@ -137,6 +170,14 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1 and pause_rect.collidepoint(event.pos):
                     paused = not paused
+                    if paused:
+                        pygame.time.set_timer(SUPPLY_TIME,0)
+                        pygame.mixer.music.pause()
+                        pygame.mixer.pause()
+                    else:
+                        pygame.time.set_timer(SUPPLY_TIME,randint(25,40) * 1000)
+                        pygame.mixer.music.unpause()
+                        pygame.mixer.unpause()
             elif event.type == pygame.MOUSEMOTION:
                 if pause_rect.collidepoint(event.pos):#check whether the mouse in the range of pause_rect
                     if paused:
@@ -155,6 +196,19 @@ def main():
                         get_bomb_sound.play()
                         for each in enemies:
                             each.active = False
+            elif event.type == SUPPLY_TIME:
+                supply_sound.play()
+                if choice([True,False]):
+                    bomb_supply.reset()
+                else:
+                    bullet_supply.reset()
+            elif event.type == DOUBLE_BULLET_TIME:
+                is_double_bullet = False
+                pygame.time.set_timer(DOUBLE_BULLET_TIME,0)
+            elif event.type == INVINCIBLE_TIME:
+                plane.invincible = False
+                pygame.time.set_timer(INVINCIBLE_TIME,0)
+
 
         #increase difficulty and rule of level
         if score > 50 and level == 1:
@@ -173,7 +227,7 @@ def main():
         #draw background
         screen.blit(background,(0,0))  #draw one pic onto anther.(0,0): represent the relative location
 
-        if not paused:
+        if not paused and LIFE_NUM:
             key_pressed = pygame.key.get_pressed()
             if key_pressed[pygame.K_w] or key_pressed[pygame.K_UP]:
                 plane.moveUp()
@@ -184,13 +238,38 @@ def main():
             if key_pressed[pygame.K_d] or key_pressed[pygame.K_RIGHT]:
                 plane.moveRight()
 
+            #check whether player get supply
+            if bomb_supply.active:
+                bomb_supply.move()
+                screen.blit(bomb_supply.image,bomb_supply.rect)
+                if pygame.sprite.collide_mask(bomb_supply,plane):
+                    get_bomb_sound.play()
+                    if bomb_NUM < 3:
+                        bomb_NUM += 1
+                    bomb_supply.active = False
+            if bullet_supply.active:
+                bullet_supply.move()
+                screen.blit(bullet_supply.image,bullet_supply.rect)
+                if pygame.sprite.collide_mask(bullet_supply,plane):
+                    get_bullet_sound.play()
+                    is_double_bullet = True
+                    pygame.time.set_timer(DOUBLE_BULLET_TIME,15 * 1000)
+                    bullet_supply.active = False
 
             #the plane fires
             if not(delay % 10):
-                bullet1[bullet1_index].reset(plane.rect.midtop)
-                bullet1_index = (bullet1_index + 1) % BULLET1_NUM
+                bullet_sound.play()
+                if is_double_bullet:
+                    bullets = bullet2
+                    bullets[bullet2_index].reset((plane.rect.centerx - 33,plane.rect.centery))
+                    bullets[bullet2_index + 1].reset((plane.rect.centerx + 30,plane.rect.centery))
+                    bullet2_index = (bullet2_index + 2) % BULLET2_NUM
+                else:
+                    bullets = bullet1
+                    bullets[bullet1_index].reset(plane.rect.midtop)
+                    bullet1_index = (bullet1_index + 1) % BULLET1_NUM
             #check whether bullets hit enemies
-            for bullet in bullet1:
+            for bullet in bullets:
                 if bullet.active:
                     bullet.move()
                     screen.blit(bullet.image,bullet.rect)
@@ -289,34 +368,93 @@ def main():
             #check whether occurs collapse between plane and enemies
             collapse = pygame.sprite.spritecollide(plane,enemies,False,pygame.sprite.collide_mask)
             #the statement returns two types(one is a list,anther is bool)
-            if collapse:
+            if collapse and not plane.invincible:
                 plane.active = False
                 for e in collapse:
                     e.active = False
 
-            #draw plane and creat a dynamic effect
+            #draw plane and create a dynamic effect
             if plane.active:
                 if switch_image:
                     screen.blit(plane.image1,plane.rect)
                 else:
                     screen.blit(plane.image2,plane.rect)
             else:
-                me_down_sound.play()
                 if not(delay % 3):
+                    if plane_destroy_index == 0:
+                        me_down_sound.play()
                     screen.blit(plane.destroy_images[plane_destroy_index],plane.rect)
                     plane_destroy_index = (plane_destroy_index + 1) % 4
+                    if plane_destroy_index == 0:
+                        LIFE_NUM -= 1
+                        plane.reset()
+                        pygame.time.set_timer(INVINCIBLE_TIME,3 * 1000)
 
-        bomb_text = bomb_font.render('x %d'%bomb_NUM,True,WHITE)
-        bomb_text_rect = bomb_text.get_rect()
-        screen.blit(bomb_text,(20 + bomb_image_rect.width,height - 5 - bomb_text_rect.height))
-        screen.blit(bomb_image,(10,height - 10 - bomb_image_rect.height))
 
-        score_text = score_font.render('Score : %s'%str(score),True,WHITE)
-        screen.blit(score_text,(10,5))
-        level_text = level_font.render('Level : %s'%str(level),True,WHITE)
-        screen.blit(level_text,(20,30))
+            bomb_text = bomb_font.render('x %d'%bomb_NUM,True,WHITE)
+            bomb_text_rect = bomb_text.get_rect()
+            screen.blit(bomb_text,(20 + bomb_image_rect.width,height - 5 - bomb_text_rect.height))
+            screen.blit(bomb_image,(10,height - 10 - bomb_image_rect.height))
+
+            #draw the remaining lives(plane)
+            if LIFE_NUM:
+                for i in range(LIFE_NUM):
+                    screen.blit(life_image,(width - 10 - (i+1)*life_rect.width,height - 10 - life_rect.height))
+
+            score_text = score_font.render('Score : %s'%str(score),True,WHITE)
+            screen.blit(score_text,(10,5))
+            level_text = level_font.render('Level : %s'%str(level),True,WHITE)
+            screen.blit(level_text,(20,30))
+
+        elif LIFE_NUM == 0:
+            if not recorded:
+                recorded = True
+                #backgroud music stop
+                pygame.mixer.music.stop()
+                pygame.mixer.stop()
+                pygame.time.set_timer(SUPPLY_TIME,0)
+                with open('record.txt','r') as outfile:
+                    recorded_score = int(outfile.read())
+                    if score > recorded_score:
+                        recorded_score = score
+                        with open('record.txt','w') as infile:
+                            infile.write(str(score))
+            recorded_score_text = score_font.render('Best : %d'%recorded_score,True,WHITE)
+            screen.blit(recorded_score_text,(50,50))
+
+            your_score_text = game_over_font.render('Your Score',True,WHITE)
+            your_score_text_rect = your_score_text.get_rect()
+            your_score_text_rect.left,your_score_text_rect.top = (width - your_score_text_rect.width) // 2,height // 3
+            screen.blit(your_score_text,your_score_text_rect)
+
+            score_text = game_over_font.render(str(score),True,WHITE)
+            score_text_rect = score_text.get_rect()
+            score_text_rect.left,score_text_rect.top = (width - score_text_rect.width) // 2,\
+                                                                        your_score_text_rect.bottom + 10
+            screen.blit(score_text,score_text_rect)
+
+            again_image_rect.left,again_image_rect.top = (width - again_image_rect.width) // 2,\
+                                                                    score_text_rect.bottom + 50
+            screen.blit(again_image,again_image_rect)
+
+            game_over_image_rect.left,game_over_image_rect.top = (width - again_image_rect.width) // 2,\
+                                                                            again_image_rect.bottom + 10
+            screen.blit(game_over_image,game_over_image_rect)
+
+            if pygame.mouse.get_pressed()[0]:#get mouse position
+                position = pygame.mouse.get_pos()
+                if again_image_rect.left < position[0] < again_image_rect.right and \
+                        again_image_rect.top < position[1] < again_image_rect.bottom:
+                    main()
+                elif game_over_image_rect.left < position[0] < game_over_image_rect.right and \
+                    game_over_image_rect.top < position[1] < game_over_image_rect.bottom:
+                    pygame.quit()
+                    sys.exit()
 
         screen.blit(pause_image,pause_rect)
+
+
+
 
         if not (delay % 5):
             switch_image = not switch_image
